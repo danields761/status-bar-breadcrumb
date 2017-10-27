@@ -25,13 +25,15 @@ var _fs = require("fs");
 
 var fs = _interopRequireWildcard(_fs);
 
+var _minimatch = require("minimatch");
+
+var minimatch = _interopRequireWildcard(_minimatch);
+
 var _vscode = require("vscode");
 
 var vscode = _interopRequireWildcard(_vscode);
 
-var _minimatch = require("minimatch");
-
-var minimatch = _interopRequireWildcard(_minimatch);
+var _config = require("./config");
 
 function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 
@@ -162,7 +164,8 @@ var NavigationQuickPickMenu = function (_Disposable) {
 
     /**
      * Create menu with callbacks
-     * @param {*} fileSelectedCallback 
+     * @param {*} excludePatterns list of regexps to preform excluding
+     * @param {*} fileSelectedCallback call in file selected using menu
      * @param {*} dirSelectedCallback if not set will be called recursively
      */
     function NavigationQuickPickMenu(excludePatterns, fileSelectedCallback, dirSelectedCallback) {
@@ -172,9 +175,7 @@ var NavigationQuickPickMenu = function (_Disposable) {
 
         _this._fileCallback = fileSelectedCallback;
         _this._dirCallback = dirSelectedCallback;
-        _this._excludePatterns = excludePatterns.map(function (pattern) {
-            return minimatch.makeRe(pattern);
-        });
+        _this._excludePatterns = excludePatterns;
         _this._currentCancellationToken = null;
         if (dirSelectedCallback == undefined || dirSelectedCallback === null) _this._dirCallback = function (abs, name) {
             return _this.showDir(abs);
@@ -184,7 +185,7 @@ var NavigationQuickPickMenu = function (_Disposable) {
 
     /**
      * Create menu for directory
-     * @param {*} dir 
+     * @param {*} dir given directory
      */
 
 
@@ -196,17 +197,19 @@ var NavigationQuickPickMenu = function (_Disposable) {
             // list current dir files splitting them into files and directories
             var dirs = [];
             var files = [];
-            fs.readdirSync(dir).filter(function (f) {
+            fs.readdirSync(dir).map(function (f) {
+                return path.normalize(path.join(dir, f));
+            }).filter(function (f) {
                 return !_this2._excludePatterns.some(function (p) {
                     return p.test(f);
                 });
-            }).forEach(function (name) {
-                var abs = path.join(dir, name);
-                if (_isDirectory(abs)) dirs.push({ label: "$(file-directory) " + name, detail: abs });else files.push({ label: name, detail: abs });
+            }).forEach(function (absolute) {
+                var name = path.basename(absolute);
+                if (_isDirectory(absolute)) dirs.push({ label: "$(file-directory) " + name, detail: absolute });else files.push({ label: name, detail: absolute });
             });
             // show menu items, on then call appropriate callback
             this._currentCancellationToken = new vscode.CancellationTokenSource();
-            vscode.window.showQuickPick(dirs.sort().concat(files.sort())).then(function (selected) {
+            vscode.window.showQuickPick([{ label: '..', detail: path.join(dir, '..') }].concat(dirs.sort().concat(files.sort()))).then(function (selected) {
                 _this2._currentCancellationToken = null;
                 if (selected == undefined) return;
 
@@ -447,14 +450,19 @@ var StatusBarBreadCrumbExtension = function (_Disposable3) {
 
         _this5._statusBarItem = null;
         _this5._navigationMenu = null;
+        _this5._config = null;
         return _this5;
     }
+
+    /**
+     * Same as `extension.activate`
+     * @param {*} context extension context
+     */
+
 
     _createClass(StatusBarBreadCrumbExtension, [{
         key: "activate",
         value: function activate(context) {
-            var _this6 = this;
-
             // Register commands
             var _iteratorNormalCompletion8 = true;
             var _didIteratorError8 = false;
@@ -469,7 +477,7 @@ var StatusBarBreadCrumbExtension = function (_Disposable3) {
                     vscode.commands.registerCommand(command_name, command_func.bind(this));
                 }
 
-                // Get configuration
+                // reload on config change
             } catch (err) {
                 _didIteratorError8 = true;
                 _iteratorError8 = err;
@@ -485,35 +493,55 @@ var StatusBarBreadCrumbExtension = function (_Disposable3) {
                 }
             }
 
-            var configuration = vscode.workspace.getConfiguration('status-bar-breadcrumb');
+            vscode.workspace.onDidChangeConfiguration(this.reload.bind(this));
 
-            // Reload navigation menu on change
-            vscode.workspace.onDidChangeConfiguration(function () {
-                return _this6._navigationMenu.dispose();
-            });
+            // Subscribe for current document changed events
+            vscode.window.onDidChangeActiveTextEditor(this._onNewTextEditor.bind(this));
 
             // Create status bar item
             this._statusBarItem = new MultipleStatusBarItem();
 
-            // Create navigation menu
-            this._navigationMenu = new NavigationQuickPickMenu(configuration.get('filesNavigationMenuExcludePatterns'), this._openFileInEditor);
+            // initialize
+            this._initialize();
+        }
 
-            // Subscribe for current document changed events
-            var newDocCallback = this._onNewTextEditor;
-            vscode.window.onDidChangeActiveTextEditor(newDocCallback.bind(this));
+        /**
+         * Perform extension reloading
+         * Dont need to recreate all resources
+         */
 
-            // Call active editor changed manually first time
-            this._onNewTextEditor(vscode.window.activeTextEditor);
+    }, {
+        key: "reload",
+        value: function reload() {
+            log.debug('Reloading configuration ...');
+
+            // dispose before recreating
+            this._navigationMenu.dispose();
+
+            // initialize again
+            this._initialize();
         }
     }, {
         key: "dispose",
         value: function dispose() {
             this._statusBarItem.dispose();
-            this._navigationMenu.dispose();
+            if (this._navigationMenu) this._navigationMenu.dispose();
         }
 
         // private
 
+    }, {
+        key: "_initialize",
+        value: function _initialize() {
+            // Get configuration
+            var config = new _config.ExtensionConfig(vscode.workspace.getConfiguration());
+
+            // Create navigation menu
+            this._navigationMenu = new NavigationQuickPickMenu(config.excludePatterns, this._openFileInEditor);
+
+            // Call active editor changed manually first time
+            this._onNewTextEditor(vscode.window.activeTextEditor);
+        }
     }, {
         key: "_showSameLevelFilesQuickMenu",
         value: function _showSameLevelFilesQuickMenu(dir) {
@@ -559,7 +587,7 @@ var StatusBarBreadCrumbExtension = function (_Disposable3) {
 // Aggregated list of needful commands
 
 
-StatusBarBreadCrumbExtension.COMMAND_SHOW_SAME_LEVEL_FILES_FOR_GIVEN = 'status-bar-breadcrumb.showSameLevelFilesForGiven';
+StatusBarBreadCrumbExtension.COMMAND_SHOW_SAME_LEVEL_FILES_FOR_GIVEN = 'statusBarBreadcrumb.showSameLevelFilesForGiven';
 StatusBarBreadCrumbExtension.COMMANDS_AGGREGATED = [[StatusBarBreadCrumbExtension.COMMAND_SHOW_SAME_LEVEL_FILES_FOR_GIVEN, StatusBarBreadCrumbExtension.prototype._showSameLevelFilesQuickMenu]];
 
 // extension activate method

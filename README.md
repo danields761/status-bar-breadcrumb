@@ -4,11 +4,12 @@ Annoying of missing something like this feature [Nav toolbar](https://github.com
 This extension provides temporary solution for navigation using breadcrumb in status bar.
 
 ## Features
+
 ![Demo](images/demo.gif)
 
 It's intended to demolish the lack of breadcrumb navigation like IntelliJIdea or Eclipce etc. have.
 
-![Demo](/images/desired_feature.png) 
+![Demo](/images/desired_feature.png)
 
 ![Demo](/images/desired_feature_opened.png)
 
@@ -16,16 +17,12 @@ Like IntelliJIdea, this extension shows current file path in status bar splited 
 
 ## Extension Settings
 
-This extension contributes the following settings:
+This extension is using next settings:
 
-* `status-bar-breadcrumb.filesNavigationMenuExcludePatterns`: exclude files which match pattern from navigation menu
+* `files.exclude`: list of globs patterns for excluding files and folders from navigation menu
+* `statusBarBreadcrumb.additionalFilesExclude`: additional list of glob pattern to exclude files
 
 ## Known Issues
 
 1. If path long enough last items will not fit into status bar and become invisible.
-2. It would be nice to show file icons in navigation menu like explorer did, but, currently, only folders have icon.
-
-## Release Notes
-
-### 0.1.0
-Initial release
+2. It would be nice to show file icons in navigation menu like explorer did, but, currently, only folders have icons.

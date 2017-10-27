@@ -4,12 +4,14 @@
 import * as path from "path";
 import * as os from "os";
 import * as fs from "fs";
-import * as vscode from "vscode";
 import * as minimatch from "minimatch";
+import * as vscode from "vscode";
 import {Disposable} from "vscode";
 
+import {ExtensionConfig} from "./config";
 
-let log = console;
+
+const log = console;
 
 
 // utils
@@ -102,16 +104,15 @@ function createBreadCrumbItemsFromFile(fileName, callback) {
 class NavigationQuickPickMenu extends Disposable {
     /**
      * Create menu with callbacks
-     * @param {*} fileSelectedCallback 
+     * @param {*} excludePatterns list of regexps to preform excluding
+     * @param {*} fileSelectedCallback call in file selected using menu
      * @param {*} dirSelectedCallback if not set will be called recursively
      */
     constructor(excludePatterns, fileSelectedCallback, dirSelectedCallback) {
         super();
         this._fileCallback = fileSelectedCallback;
         this._dirCallback = dirSelectedCallback;
-        this._excludePatterns = excludePatterns.map(
-            pattern => minimatch.makeRe(pattern)
-        );
+        this._excludePatterns = excludePatterns;
         this._currentCancellationToken = null;
         if (dirSelectedCallback == undefined || dirSelectedCallback === null)
             this._dirCallback = (abs, name) => this.showDir(abs);
@@ -119,27 +120,31 @@ class NavigationQuickPickMenu extends Disposable {
 
     /**
      * Create menu for directory
-     * @param {*} dir 
+     * @param {*} dir given directory
      */
     showDir(dir) {
         // list current dir files splitting them into files and directories
         let dirs = [];
         let files = [];
-        fs.readdirSync(dir).filter(
+        fs.readdirSync(dir).map(
+            f => path.normalize(path.join(dir, f))
+        ).filter(
             f => !this._excludePatterns.some(p => p.test(f))
         ).forEach(
-            name => {
-                let abs = path.join(dir, name);
-                if (_isDirectory(abs))
-                    dirs.push({label: `$(file-directory) ${name}`, detail: abs});
+            absolute => {
+                let name = path.basename(absolute);
+                if (_isDirectory(absolute))
+                    dirs.push({label: `$(file-directory) ${name}`, detail: absolute});
                 else
-                    files.push({label: name, detail: abs});
+                    files.push({label: name, detail: absolute});
             }
-        )
+        );
         // show menu items, on then call appropriate callback
         this._currentCancellationToken = new vscode.CancellationTokenSource();
         vscode.window.showQuickPick(
-            dirs.sort().concat(files.sort())
+            [
+                {label: '..', detail: path.join(dir, '..')}
+            ].concat(dirs.sort().concat(files.sort()))
         ).then(
             selected => {
                 this._currentCancellationToken = null;
@@ -241,8 +246,13 @@ class StatusBarBreadCrumbExtension extends Disposable {
         super();
         this._statusBarItem = null;
         this._navigationMenu = null;
+        this._config = null;
     }
 
+    /**
+     * Same as `extension.activate`
+     * @param {*} context extension context
+     */
     activate(context) {
         // Register commands
         for (let [command_name, command_func] of StatusBarBreadCrumbExtension.COMMANDS_AGGREGATED) {
@@ -251,36 +261,53 @@ class StatusBarBreadCrumbExtension extends Disposable {
             );
         }
 
-        // Get configuration
-        let configuration = vscode.workspace.getConfiguration('status-bar-breadcrumb');
+        // reload on config change
+        vscode.workspace.onDidChangeConfiguration(this.reload.bind(this));
 
-        // Reload navigation menu on change
-        vscode.workspace.onDidChangeConfiguration(
-            () => this._navigationMenu.dispose()
-        );
-
+        // Subscribe for current document changed events
+        vscode.window.onDidChangeActiveTextEditor(this._onNewTextEditor.bind(this));
+        
         // Create status bar item
         this._statusBarItem = new MultipleStatusBarItem();
 
+        // initialize
+        this._initialize();
+    }
+
+    /**
+     * Perform extension reloading
+     * Dont need to recreate all resources
+     */
+    reload() {
+        log.debug('Reloading configuration ...');
+
+        // dispose before recreating
+        this._navigationMenu.dispose();
+        
+        // initialize again
+        this._initialize();
+    }
+
+    dispose() {
+        this._statusBarItem.dispose();
+        if (this._navigationMenu)
+            this._navigationMenu.dispose();
+    }
+
+    // private
+    _initialize() {
+        // Get configuration
+        let config = new ExtensionConfig(vscode.workspace.getConfiguration());
+
         // Create navigation menu
         this._navigationMenu = new NavigationQuickPickMenu(
-            configuration.get('filesNavigationMenuExcludePatterns'), this._openFileInEditor
+            config.excludePatterns, this._openFileInEditor
         );
-        
-        // Subscribe for current document changed events
-        let newDocCallback = this._onNewTextEditor;
-        vscode.window.onDidChangeActiveTextEditor(newDocCallback.bind(this));
 
         // Call active editor changed manually first time
         this._onNewTextEditor(vscode.window.activeTextEditor);
     }
 
-    dispose() {
-        this._statusBarItem.dispose();
-        this._navigationMenu.dispose();
-    }
-
-    // private
     _showSameLevelFilesQuickMenu(dir) {
         log.info('Showing quick open menu for ' + dir);
         
@@ -321,7 +348,7 @@ class StatusBarBreadCrumbExtension extends Disposable {
 
 // There is no static attributes *facepalm.jpg*
 // Aggregated list of needful commands
-StatusBarBreadCrumbExtension.COMMAND_SHOW_SAME_LEVEL_FILES_FOR_GIVEN = 'status-bar-breadcrumb.showSameLevelFilesForGiven';
+StatusBarBreadCrumbExtension.COMMAND_SHOW_SAME_LEVEL_FILES_FOR_GIVEN = 'statusBarBreadcrumb.showSameLevelFilesForGiven';
 StatusBarBreadCrumbExtension.COMMANDS_AGGREGATED = [
     [
         StatusBarBreadCrumbExtension.COMMAND_SHOW_SAME_LEVEL_FILES_FOR_GIVEN,

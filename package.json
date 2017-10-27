@@ -2,7 +2,7 @@
     "name": "status-bar-breadcrumb",
     "displayName": "BreadCrumb in StatusBar",
     "description": "Temporary solution which helps to watch current active tab and easily navigate through relative paths and files",
-    "version": "0.1.0",
+    "version": "0.1.2",
     "publisher": "danields761",
     "repository": "https://github.com/danields761/status-bar-breadcrumb.git",
     "engines": {
@@ -18,28 +18,28 @@
     "contributes": {
         "commands": [
             {
-                "command": "status-bar-breadcrumb.showSameLevelFilesForGiven",
-                "title": "BeadCrumb: Show Files Which Relative For Given"
+                "command": "statusBarBreadcrumb.showSameLevelFilesForGiven",
+                "title": "BeadCrumb: Show Files Which Relative For Active"
             }
         ],
         "configuration": [
             {
-                "title": "Stats Bar Breadcrumb configuration",
-                "type": "object",
+                "title": "BreadCrumb in StatusBar extension",
                 "properties": {
-                    "status-bar-breadcrumb.filesNavigationMenuExcludePatterns": {
+                    "statusBarBreadcrumb.additionalFilesExclude": {
                         "type": "array",
-                        "description": "Exclude files which match given patterns from files navigation menu",
-                        "default": [
-                            ".git"
-                        ]
+                        "items": [
+                            "string"
+                        ],
+                        "default": [],
+                        "description": "Additional list of glob pattern to exclude files"
                     }
                 }
             }
         ]
     },
     "scripts": {
-        "compile": "babel src --out-dir out --source-maps",
+        "compile": "babel src --out-dir out --source-maps -w",
         "postinstall": "node ./node_modules/vscode/bin/install",
         "test": "node ./node_modules/vscode/bin/test"
     },
