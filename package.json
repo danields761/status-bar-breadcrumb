@@ -2,9 +2,10 @@
     "name": "status-bar-breadcrumb",
     "displayName": "BreadCrumb in StatusBar",
     "description": "Temporary solution which helps to watch current active tab and easily navigate through relative paths and files",
-    "version": "0.1.2",
+    "version": "0.1.4",
     "publisher": "danields761",
-    "contributors": ["innerlee <lovebufan@gmail.com> (https://github.com/innerlee)"]
+    "author": "Daniel Daniel's <danields761@gmail.com> (https://github.com/danields761)",
+    "contributors": ["innerlee <lovebufan@gmail.com> (https://github.com/innerlee)"],
     "repository": "https://github.com/danields761/status-bar-breadcrumb.git",
     "engines": {
         "vscode": "^1.18.0"

@@ -1,5 +1,8 @@
 # Change Log
 
+## [0.1.4]
+
+- Improve Windows support (thx for **innerlee**)
 
 ## [0.1.2]
 

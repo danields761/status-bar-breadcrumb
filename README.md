@@ -1,5 +1,8 @@
 # Status Bar Breadcrumb README
 
+![version](https://vsmarketplacebadge.apphb.com/version-short/danields761.status-bar-breadcrumb.svg)
+![installs](https://vsmarketplacebadge.apphb.com/installs-short/danields761.status-bar-breadcrumb.svg)
+
 Annoying of missing something like this feature [Nav toolbar](https://github.com/Microsoft/vscode/pull/31162)?
 This extension provides temporary solution for navigation using breadcrumb in status bar.
 
