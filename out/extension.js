@@ -6,9 +6,9 @@ Object.defineProperty(exports, "__esModule", {
     value: true
 });
 
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
 var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
 exports.activate = activate;
 exports.deactivate = deactivate;
@@ -51,11 +51,12 @@ function _isDirectory(file) {
     return stat.isDirectory();
 }
 
-function createBreadCrumbItemsFromFile(fileName, callback) {
+function createBreadCrumbItemsFromFile(fileUri, callback) {
     // this wall of code full of shit but do exactly what it should
     // no power to refactor it
+    var fileName = path.normalize(fileUri.fsPath);
     var selectedPath = fileName;
-    var homeDir = os.homedir();
+    var homeDir = path.normalize(os.homedir());
     var workspaceDirs = vscode.workspace.workspaceFolders;
     var homeFound = false;
     var workspaceFound = false;
@@ -67,44 +68,16 @@ function createBreadCrumbItemsFromFile(fileName, callback) {
     if (homeFound) {
         selectedPath = path.relative(homeDir, fileName);
     }
-    var _iteratorNormalCompletion = true;
-    var _didIteratorError = false;
-    var _iteratorError = undefined;
-
-    try {
-        for (var _iterator = workspaceDirs.map(function (dir) {
-            return [dir.name, dir.uri.path];
-        })[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
-            var _step$value = _slicedToArray(_step.value, 2),
-                name = _step$value[0],
-                wsd = _step$value[1];
-
-            workspaceFound = fileName.includes(wsd);
-            if (workspaceFound) {
-                selectedPath = path.relative(wsd, fileName);
-                workspaceFound = true;
-                selectedWorkspaceName = name;
-                selectedWorkspaceAbs = wsd;
-                break;
-            }
-        }
-
-        // create list of breadcrumb items
-    } catch (err) {
-        _didIteratorError = true;
-        _iteratorError = err;
-    } finally {
-        try {
-            if (!_iteratorNormalCompletion && _iterator.return) {
-                _iterator.return();
-            }
-        } finally {
-            if (_didIteratorError) {
-                throw _iteratorError;
-            }
-        }
+    var ws = vscode.workspace.getWorkspaceFolder(fileUri);
+    if (ws) {
+        var wsd = ws.uri.fsPath;
+        selectedPath = path.relative(wsd, fileName);
+        workspaceFound = true;
+        selectedWorkspaceName = ws.name;
+        selectedWorkspaceAbs = wsd;
     }
 
+    // create list of breadcrumb items
     var breadcrumbItems = [];
     var parsedFileName = path.parse(selectedPath);
     var aggregatedPath = null;
@@ -122,30 +95,30 @@ function createBreadCrumbItemsFromFile(fileName, callback) {
     }
 
     // push itermediate parts
-    var _iteratorNormalCompletion2 = true;
-    var _didIteratorError2 = false;
-    var _iteratorError2 = undefined;
+    var _iteratorNormalCompletion = true;
+    var _didIteratorError = false;
+    var _iteratorError = undefined;
 
     try {
-        for (var _iterator2 = parsedFileName.dir.split(path.sep).filter(function (a) {
+        for (var _iterator = parsedFileName.dir.split(path.sep).filter(function (a) {
             return !!a;
-        })[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
-            var part = _step2.value;
+        })[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+            var part = _step.value;
 
             aggregatedPath = path.join(aggregatedPath, part);
             breadcrumbItems.push(["$(chevron-right)\t" + part, "Folder " + part, callback, aggregatedPath]);
         }
     } catch (err) {
-        _didIteratorError2 = true;
-        _iteratorError2 = err;
+        _didIteratorError = true;
+        _iteratorError = err;
     } finally {
         try {
-            if (!_iteratorNormalCompletion2 && _iterator2.return) {
-                _iterator2.return();
+            if (!_iteratorNormalCompletion && _iterator.return) {
+                _iterator.return();
             }
         } finally {
-            if (_didIteratorError2) {
-                throw _iteratorError2;
+            if (_didIteratorError) {
+                throw _iteratorError;
             }
         }
     }
@@ -231,7 +204,7 @@ var NavigationQuickPickMenu = function (_Disposable) {
 
 /**
  * Class is untended to group and control multiple status-bar items at once
- *  providing multiple control methods like 
+ *  providing multiple control methods like
  *  @see [show](#MultipleStatusBarItem.show) and @see [hide](#MultipleStatusBarItem.hide)
  */
 
@@ -252,8 +225,8 @@ var MultipleStatusBarItem = function (_Disposable2) {
     }
 
     /**
-     * Set group of status-bar items strictly aligned together 
-     * @param items 
+     * Set group of status-bar items strictly aligned together
+     * @param items
      * list of tuples in form (item_label, callable, callable_args)
      */
 
@@ -266,17 +239,17 @@ var MultipleStatusBarItem = function (_Disposable2) {
             this.dispose();
 
             var num = 0;
-            var _iteratorNormalCompletion3 = true;
-            var _didIteratorError3 = false;
-            var _iteratorError3 = undefined;
+            var _iteratorNormalCompletion2 = true;
+            var _didIteratorError2 = false;
+            var _iteratorError2 = undefined;
 
             try {
                 var _loop = function _loop() {
-                    var _step3$value = _slicedToArray(_step3.value, 4),
-                        text = _step3$value[0],
-                        hint = _step3$value[1],
-                        callable = _step3$value[2],
-                        args = _step3$value[3];
+                    var _step2$value = _slicedToArray(_step2.value, 4),
+                        text = _step2$value[0],
+                        hint = _step2$value[1],
+                        callable = _step2$value[2],
+                        args = _step2$value[3];
 
                     var r_item = vscode.window.createStatusBarItem(_this4._sbAlign, _this4._basePriority + num++);
 
@@ -293,8 +266,41 @@ var MultipleStatusBarItem = function (_Disposable2) {
                     _this4._subItemCommandHandles.push(command_handle);
                 };
 
-                for (var _iterator3 = items[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
+                for (var _iterator2 = items[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
                     _loop();
+                }
+            } catch (err) {
+                _didIteratorError2 = true;
+                _iteratorError2 = err;
+            } finally {
+                try {
+                    if (!_iteratorNormalCompletion2 && _iterator2.return) {
+                        _iterator2.return();
+                    }
+                } finally {
+                    if (_didIteratorError2) {
+                        throw _iteratorError2;
+                    }
+                }
+            }
+        }
+
+        /**
+         * Show elements
+         */
+
+    }, {
+        key: "show",
+        value: function show() {
+            var _iteratorNormalCompletion3 = true;
+            var _didIteratorError3 = false;
+            var _iteratorError3 = undefined;
+
+            try {
+                for (var _iterator3 = this._subItems[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
+                    var item = _step3.value;
+
+                    item.show();
                 }
             } catch (err) {
                 _didIteratorError3 = true;
@@ -313,12 +319,12 @@ var MultipleStatusBarItem = function (_Disposable2) {
         }
 
         /**
-         * Show elements
+         * Hide elements
          */
 
     }, {
-        key: "show",
-        value: function show() {
+        key: "hide",
+        value: function hide() {
             var _iteratorNormalCompletion4 = true;
             var _didIteratorError4 = false;
             var _iteratorError4 = undefined;
@@ -327,7 +333,7 @@ var MultipleStatusBarItem = function (_Disposable2) {
                 for (var _iterator4 = this._subItems[Symbol.iterator](), _step4; !(_iteratorNormalCompletion4 = (_step4 = _iterator4.next()).done); _iteratorNormalCompletion4 = true) {
                     var item = _step4.value;
 
-                    item.show();
+                    item.hide();
                 }
             } catch (err) {
                 _didIteratorError4 = true;
@@ -344,14 +350,9 @@ var MultipleStatusBarItem = function (_Disposable2) {
                 }
             }
         }
-
-        /**
-         * Hide elements
-         */
-
     }, {
-        key: "hide",
-        value: function hide() {
+        key: "dispose",
+        value: function dispose() {
             var _iteratorNormalCompletion5 = true;
             var _didIteratorError5 = false;
             var _iteratorError5 = undefined;
@@ -360,7 +361,7 @@ var MultipleStatusBarItem = function (_Disposable2) {
                 for (var _iterator5 = this._subItems[Symbol.iterator](), _step5; !(_iteratorNormalCompletion5 = (_step5 = _iterator5.next()).done); _iteratorNormalCompletion5 = true) {
                     var item = _step5.value;
 
-                    item.hide();
+                    item.dispose();
                 }
             } catch (err) {
                 _didIteratorError5 = true;
@@ -376,19 +377,16 @@ var MultipleStatusBarItem = function (_Disposable2) {
                     }
                 }
             }
-        }
-    }, {
-        key: "dispose",
-        value: function dispose() {
+
             var _iteratorNormalCompletion6 = true;
             var _didIteratorError6 = false;
             var _iteratorError6 = undefined;
 
             try {
-                for (var _iterator6 = this._subItems[Symbol.iterator](), _step6; !(_iteratorNormalCompletion6 = (_step6 = _iterator6.next()).done); _iteratorNormalCompletion6 = true) {
-                    var item = _step6.value;
+                for (var _iterator6 = this._subItemCommandHandles[Symbol.iterator](), _step6; !(_iteratorNormalCompletion6 = (_step6 = _iterator6.next()).done); _iteratorNormalCompletion6 = true) {
+                    var handle = _step6.value;
 
-                    item.dispose();
+                    handle.dispose();
                 }
             } catch (err) {
                 _didIteratorError6 = true;
@@ -401,31 +399,6 @@ var MultipleStatusBarItem = function (_Disposable2) {
                 } finally {
                     if (_didIteratorError6) {
                         throw _iteratorError6;
-                    }
-                }
-            }
-
-            var _iteratorNormalCompletion7 = true;
-            var _didIteratorError7 = false;
-            var _iteratorError7 = undefined;
-
-            try {
-                for (var _iterator7 = this._subItemCommandHandles[Symbol.iterator](), _step7; !(_iteratorNormalCompletion7 = (_step7 = _iterator7.next()).done); _iteratorNormalCompletion7 = true) {
-                    var handle = _step7.value;
-
-                    handle.dispose();
-                }
-            } catch (err) {
-                _didIteratorError7 = true;
-                _iteratorError7 = err;
-            } finally {
-                try {
-                    if (!_iteratorNormalCompletion7 && _iterator7.return) {
-                        _iterator7.return();
-                    }
-                } finally {
-                    if (_didIteratorError7) {
-                        throw _iteratorError7;
                     }
                 }
             }
@@ -464,31 +437,31 @@ var StatusBarBreadCrumbExtension = function (_Disposable3) {
         key: "activate",
         value: function activate(context) {
             // Register commands
-            var _iteratorNormalCompletion8 = true;
-            var _didIteratorError8 = false;
-            var _iteratorError8 = undefined;
+            var _iteratorNormalCompletion7 = true;
+            var _didIteratorError7 = false;
+            var _iteratorError7 = undefined;
 
             try {
-                for (var _iterator8 = StatusBarBreadCrumbExtension.COMMANDS_AGGREGATED[Symbol.iterator](), _step8; !(_iteratorNormalCompletion8 = (_step8 = _iterator8.next()).done); _iteratorNormalCompletion8 = true) {
-                    var _step8$value = _slicedToArray(_step8.value, 2),
-                        command_name = _step8$value[0],
-                        command_func = _step8$value[1];
+                for (var _iterator7 = StatusBarBreadCrumbExtension.COMMANDS_AGGREGATED[Symbol.iterator](), _step7; !(_iteratorNormalCompletion7 = (_step7 = _iterator7.next()).done); _iteratorNormalCompletion7 = true) {
+                    var _step7$value = _slicedToArray(_step7.value, 2),
+                        command_name = _step7$value[0],
+                        command_func = _step7$value[1];
 
                     vscode.commands.registerCommand(command_name, command_func.bind(this));
                 }
 
                 // reload on config change
             } catch (err) {
-                _didIteratorError8 = true;
-                _iteratorError8 = err;
+                _didIteratorError7 = true;
+                _iteratorError7 = err;
             } finally {
                 try {
-                    if (!_iteratorNormalCompletion8 && _iterator8.return) {
-                        _iterator8.return();
+                    if (!_iteratorNormalCompletion7 && _iterator7.return) {
+                        _iterator7.return();
                     }
                 } finally {
-                    if (_didIteratorError8) {
-                        throw _iteratorError8;
+                    if (_didIteratorError7) {
+                        throw _iteratorError7;
                     }
                 }
             }
@@ -575,7 +548,7 @@ var StatusBarBreadCrumbExtension = function (_Disposable3) {
             log.info('new document opened ' + document.fileName);
 
             // set current statusbar item text and show it
-            this._statusBarItem.setItems(createBreadCrumbItemsFromFile(document.fileName, this._showSameLevelFilesQuickMenu.bind(this)));
+            this._statusBarItem.setItems(createBreadCrumbItemsFromFile(document.uri, this._showSameLevelFilesQuickMenu.bind(this)));
             this._statusBarItem.show();
         }
     }]);

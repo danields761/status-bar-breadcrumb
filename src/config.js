@@ -21,16 +21,16 @@ export class ExtensionConfig {
             'statusBarBreadcrumb.additionalFilesExclude'
         );
 
-        // 
+        //
         let patterns;
         if (!filesExclude)
             patterns = [];
         else
             patterns = filesExclude;
-        
+
         if (additionalFilesExclude)
             patterns = Object.assign(patterns, additionalFilesExclude);
-        
+
         return Object.entries(patterns).filter(
             ([pattern, enable]) => enable
         ).map(

@@ -41,7 +41,7 @@ var ExtensionConfig = exports.ExtensionConfig = function () {
             var filesExclude = this._sourceConfiguration.get('files.exclude');
             var additionalFilesExclude = this._sourceConfiguration.get('statusBarBreadcrumb.additionalFilesExclude');
 
-            // 
+            //
             var patterns = void 0;
             if (!filesExclude) patterns = [];else patterns = filesExclude;
 

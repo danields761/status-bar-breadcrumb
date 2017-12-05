@@ -4,9 +4,10 @@
     "description": "Temporary solution which helps to watch current active tab and easily navigate through relative paths and files",
     "version": "0.1.2",
     "publisher": "danields761",
+    "contributors": ["innerlee <lovebufan@gmail.com> (https://github.com/innerlee)"]
     "repository": "https://github.com/danields761/status-bar-breadcrumb.git",
     "engines": {
-        "vscode": "^1.17.0"
+        "vscode": "^1.18.0"
     },
     "categories": [
         "Other"
@@ -54,6 +55,6 @@
         "eslint": "^4.6.1",
         "mocha": "^3.5.0",
         "typescript": "^2.5.2",
-        "vscode": "^1.1.5"
+        "vscode": "^1.1.9"
     }
 }
