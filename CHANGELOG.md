@@ -1,5 +1,9 @@
 # Change Log
 
+## [0.2.0]
+
+- Small rebranding
+
 ## [0.1.4]
 
 - Improve Windows support (thx for **innerlee**)
