@@ -2,7 +2,7 @@
     "name": "status-bar-breadcrumb",
     "displayName": "BreadCrumb in StatusBar",
     "description": "Temporary solution which helps to watch current active tab and easily navigate through relative paths and files",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "publisher": "danields761",
     "author": "Daniel Daniel's <danields761@gmail.com> (https://github.com/danields761)",
     "contributors": ["innerlee <lovebufan@gmail.com> (https://github.com/innerlee)"],
@@ -22,7 +22,15 @@
         "commands": [
             {
                 "command": "statusBarBreadcrumb.showSameLevelFilesForGiven",
-                "title": "BeadCrumb: Show Files Which Relative For Active"
+                "title": "BeadCrumb: Show navigation menu for directory which hold current file [DEPRECATED]"
+            },
+            {
+                "command": "statusBarBreadcrumb.showThisFileLevelNavigation",
+                "title": "BeadCrumb: Show navigation menu for directory which hold current file"
+            },
+            {
+                "command": "statusBarBreadcrumb.showLastDirLevelNavigation",
+                "title": "BeadCrumb: Show navigation menu for directory which has been selected last time, do nothing if it wasn't occurs"
             }
         ],
         "configuration": [
@@ -42,7 +50,7 @@
         ]
     },
     "scripts": {
-        "compile": "babel src --out-dir out --source-maps -w",
+        "compile": "babel src --out-dir out --source-maps",
         "postinstall": "node ./node_modules/vscode/bin/install",
         "test": "node ./node_modules/vscode/bin/test"
     },
@@ -52,7 +60,7 @@
     "devDependencies": {
         "@types/mocha": "^2.2.42",
         "@types/node": "^7.0.0",
-        "babel-cli": "^6.26.0",
+        "babel-cli": "^6.26.3",
         "babel-preset-es2015": "^6.24.1",
         "eslint": "^4.6.1",
         "mocha": "^3.5.0",

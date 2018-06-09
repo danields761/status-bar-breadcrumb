@@ -115,6 +115,14 @@ class NavigationQuickPickMenu extends Disposable {
         this._currentCancellationToken = null;
         if (dirSelectedCallback == undefined || dirSelectedCallback === null)
             this._dirCallback = (abs, name) => this.showDir(abs);
+        else {
+            this._dirCallback = function(self, oldDirCallback) {
+                return (abs, name) => {
+                    self.showDir(abs);
+                    oldDirCallback(abs, name)
+                }
+            }(this, this._dirCallback) // avoid closure name shadowing
+        }
     }
 
     /**
@@ -171,7 +179,7 @@ class NavigationQuickPickMenu extends Disposable {
  *  providing multiple control methods like
  *  @see [show](#MultipleStatusBarItem.show) and @see [hide](#MultipleStatusBarItem.hide)
  */
-class MultipleStatusBarItem extends Disposable {
+class MultipleStatusBarItems extends Disposable {
     constructor(align) {
         super();
         this._basePriority = -50;
@@ -246,6 +254,7 @@ class StatusBarBreadCrumbExtension extends Disposable {
         this._statusBarItem = null;
         this._navigationMenu = null;
         this._config = null;
+        this._lastDirShown = null;
     }
 
     /**
@@ -267,7 +276,7 @@ class StatusBarBreadCrumbExtension extends Disposable {
         vscode.window.onDidChangeActiveTextEditor(this._onNewTextEditor.bind(this));
 
         // Create status bar item
-        this._statusBarItem = new MultipleStatusBarItem();
+        this._statusBarItem = new MultipleStatusBarItems();
 
         // initialize
         this._initialize();
@@ -300,27 +309,42 @@ class StatusBarBreadCrumbExtension extends Disposable {
 
         // Create navigation menu
         this._navigationMenu = new NavigationQuickPickMenu(
-            config.excludePatterns, this._openFileInEditor
+            config.excludePatterns, this._onFileChosen.bind(this), this._onDirChosen.bind(this)
         );
 
         // Call active editor changed manually first time
         this._onNewTextEditor(vscode.window.activeTextEditor);
     }
 
-    _showSameLevelFilesQuickMenu(dir) {
+    _commandShowThisFileLevelNavigation(dir) {
         log.info('Showing quick open menu for ' + dir);
 
         // show directory in menu
         this._navigationMenu.showDir(dir);
     }
 
-    _openFileInEditor(fileName) {
+    _commandShowLastDirLevelNavigation(dir) {
+        log.info(`Showing last dir ${this._lastDirShown}`);
+
+        // show last dir
+        if (this._lastDirShown != null) {
+            this._navigationMenu.showDir(this._lastDirShown);
+        }
+    }
+
+    _onFileChosen(fileName) {
         log.info('Opening file in current editor ' + fileName)
 
         // open document at current view column and show it
         vscode.workspace.openTextDocument(fileName).then(
             doc => vscode.window.showTextDocument(doc, vscode.ViewColumn.Active)
         );
+    }
+
+    _onDirChosen(dirPath) {
+        log.info(`dir chosen ${dirPath}`)
+
+        this._lastDirShown = dirPath
     }
 
     _onNewTextEditor(textEditor) {
@@ -338,21 +362,31 @@ class StatusBarBreadCrumbExtension extends Disposable {
         // set current statusbar item text and show it
         this._statusBarItem.setItems(
             createBreadCrumbItemsFromFile(
-                document.uri, this._showSameLevelFilesQuickMenu.bind(this)
+                document.uri, this._commandShowThisFileLevelNavigation.bind(this)
             )
         );
         this._statusBarItem.show();
     }
 }
 
-// There is no static attributes *facepalm.jpg*
 // Aggregated list of needful commands
-StatusBarBreadCrumbExtension.COMMAND_SHOW_SAME_LEVEL_FILES_FOR_GIVEN = 'statusBarBreadcrumb.showSameLevelFilesForGiven';
+StatusBarBreadCrumbExtension.COMMAND_SHOW_THIS_FILE_LEVEL_NAVIGATION = 'statusBarBreadcrumb.showThisFileLevelNavigation';
+StatusBarBreadCrumbExtension.COMMAND_SHOW_LAST_DIR_LEVEL_NAVIGATION = 'statusBarBreadcrumb.showLastDirLevelNavigation';
+StatusBarBreadCrumbExtension.COMMAND_SHOW_THIS_FILE_LEVEL_NAVIGATION_COMPAT = 'statusBarBreadcrumb.showSameLevelFilesForGiven';
 StatusBarBreadCrumbExtension.COMMANDS_AGGREGATED = [
     [
-        StatusBarBreadCrumbExtension.COMMAND_SHOW_SAME_LEVEL_FILES_FOR_GIVEN,
-        StatusBarBreadCrumbExtension.prototype._showSameLevelFilesQuickMenu
-    ]
+        StatusBarBreadCrumbExtension.COMMAND_SHOW_THIS_FILE_LEVEL_NAVIGATION,
+        StatusBarBreadCrumbExtension.prototype._commandShowThisFileLevelNavigation
+    ],
+    [
+        // TODO have to be deleted later
+        StatusBarBreadCrumbExtension.COMMAND_SHOW_THIS_FILE_LEVEL_NAVIGATION_COMPAT,
+        StatusBarBreadCrumbExtension.prototype._commandShowThisFileLevelNavigation
+    ],
+    [
+        StatusBarBreadCrumbExtension.COMMAND_SHOW_LAST_DIR_LEVEL_NAVIGATION,
+        StatusBarBreadCrumbExtension.prototype._commandShowLastDirLevelNavigation
+    ],
 ];
 
 
@@ -363,11 +397,11 @@ export function activate(context) {
     // Create and activate extension instance which is disposable, so deactivate isn't needed
     let this_extension = new StatusBarBreadCrumbExtension();
     this_extension.activate(context);
-    // Sub for dispose
+    // Sub for dispose so extension will be disposed automatically and we don't need manage object life-cycle manually
     context.subscriptions.push(this_extension);
 }
 
 // deactivate method
 export function deactivate() {
-
+    
 }

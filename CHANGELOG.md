@@ -1,5 +1,10 @@
 # Change Log
 
+## [0.2.1]
+
+- Adds feature to open file navigation menu for last opened folder via command `statusBarBreadcrumb.showLastDirLevelNavigation`
+- Makes old command `statusBarBreadcrumb.showSameLevelFilesForGiven` deprecated, instead adds new one `statusBarBreadcrumb.showThisFileLevelNavigation` with same functions
+
 ## [0.2.0]
 
 - Small rebranding
