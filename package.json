@@ -2,7 +2,7 @@
     "name": "status-bar-breadcrumb",
     "displayName": "BreadCrumb in StatusBar",
     "description": "Temporary solution which helps to watch current active tab and easily navigate through relative paths and files",
-    "version": "0.2.1",
+    "version": "0.2.2",
     "publisher": "danields761",
     "author": "Daniel Daniel's <danields761@gmail.com> (https://github.com/danields761)",
     "contributors": ["innerlee <lovebufan@gmail.com> (https://github.com/innerlee)"],
@@ -22,15 +22,15 @@
         "commands": [
             {
                 "command": "statusBarBreadcrumb.showSameLevelFilesForGiven",
-                "title": "BeadCrumb: Show navigation menu for directory which hold current file [DEPRECATED]"
+                "title": "BreadCrumb: Show navigation menu for directory which hold current file [DEPRECATED]"
             },
             {
                 "command": "statusBarBreadcrumb.showThisFileLevelNavigation",
-                "title": "BeadCrumb: Show navigation menu for directory which hold current file"
+                "title": "BreadCrumb: Show navigation menu for directory which hold current file"
             },
             {
                 "command": "statusBarBreadcrumb.showLastDirLevelNavigation",
-                "title": "BeadCrumb: Show navigation menu for directory which has been selected last time, do nothing if it wasn't occurs"
+                "title": "BreadCrumb: Show navigation menu for directory which has been selected last time, do nothing if it wasn't occurs"
             }
         ],
         "configuration": [

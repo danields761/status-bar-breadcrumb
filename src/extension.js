@@ -4,15 +4,13 @@
 import * as path from "path";
 import * as os from "os";
 import * as fs from "fs";
-import * as minimatch from "minimatch";
 import * as vscode from "vscode";
 import {Disposable} from "vscode";
 
 import {ExtensionConfig} from "./config";
 
-
+//
 const log = console;
-
 
 // utils
 function _isDirectory(file) {
@@ -84,18 +82,17 @@ function createBreadCrumbItemsFromFile(fileUri, callback) {
                 `$(chevron-right)\t${part}`, `Folder ${part}`,
                 callback, aggregatedPath
             ]
-        )
+        );
     }
     breadcrumbItems.push(
         [
             `$(chevron-right)\t${parsedFileName.base}`, 'Current file',
             () => {}, path.join(aggregatedPath, parsedFileName.base)
         ]
-    )
+    );
 
     return breadcrumbItems.reverse();
 }
-
 
 /**
  * Quick-pick navigation menu
@@ -113,15 +110,15 @@ class NavigationQuickPickMenu extends Disposable {
         this._dirCallback = dirSelectedCallback;
         this._excludePatterns = excludePatterns;
         this._currentCancellationToken = null;
-        if (dirSelectedCallback == undefined || dirSelectedCallback === null)
+        if (dirSelectedCallback === undefined || dirSelectedCallback === null) {
             this._dirCallback = (abs, name) => this.showDir(abs);
-        else {
+        } else {
             this._dirCallback = function(self, oldDirCallback) {
                 return (abs, name) => {
                     self.showDir(abs);
-                    oldDirCallback(abs, name)
-                }
-            }(this, this._dirCallback) // avoid closure name shadowing
+                    oldDirCallback(abs, name);
+                };
+            }(this, this._dirCallback); // avoid closure name shadowing
         }
     }
 
@@ -134,35 +131,42 @@ class NavigationQuickPickMenu extends Disposable {
         let dirs = [];
         let files = [];
         fs.readdirSync(dir).map(
-            f => path.normalize(path.join(dir, f))
+            f => path.normalize(path.join(dir, f)),
         ).filter(
-            f => !this._excludePatterns.some(p => p.test(f))
+            f => !this._excludePatterns.some(p => p.test(f)),
         ).forEach(
             absolute => {
                 let name = path.basename(absolute);
-                if (_isDirectory(absolute))
+                if (_isDirectory(absolute)) {
                     dirs.push({label: `$(file-directory) ${name}`, detail: absolute});
-                else
+                } else {
                     files.push({label: name, detail: absolute});
-            }
+                }
+            },
         );
         // show menu items, on then call appropriate callback
         this._currentCancellationToken = new vscode.CancellationTokenSource();
         vscode.window.showQuickPick(
             [
-                {label: '..', detail: path.join(dir, '..')}
-            ].concat(dirs.sort().concat(files.sort()))
+                {label: '..', detail: path.join(dir, '..')},
+                {label: '.', detail: dir},
+            ].concat(dirs.sort().concat(files.sort())),
         ).then(
             selected => {
                 this._currentCancellationToken = null;
-                if (selected == undefined)
+                if (selected === undefined) {
                     return;
+                }
+                if (selected.label === '.') {
+                    return;
+                }
 
-                if (_isDirectory(selected.detail))
+                if (_isDirectory(selected.detail)) {
                     this._dirCallback(selected.detail, selected.name);
-                else
+                } else {
                     this._fileCallback(selected.detail, selected.name);
-            }
+                }
+            },
         );
     }
 
@@ -244,7 +248,6 @@ class MultipleStatusBarItems extends Disposable {
     }
 }
 
-
 /**
  * Extension entry point with global state
  */
@@ -255,6 +258,7 @@ class StatusBarBreadCrumbExtension extends Disposable {
         this._navigationMenu = null;
         this._config = null;
         this._lastDirShown = null;
+        this._config = null;
     }
 
     /**
@@ -269,8 +273,11 @@ class StatusBarBreadCrumbExtension extends Disposable {
             );
         }
 
-        // reload on config change
-        vscode.workspace.onDidChangeConfiguration(this.reload.bind(this));
+        // Get configuration
+        this._config = new ExtensionConfig();
+
+        // Reload on config change
+        this._config.onExcludePatternsChanged(this.reload.bind(this));
 
         // Subscribe for current document changed events
         vscode.window.onDidChangeActiveTextEditor(this._onNewTextEditor.bind(this));
@@ -298,18 +305,16 @@ class StatusBarBreadCrumbExtension extends Disposable {
 
     dispose() {
         this._statusBarItem.dispose();
-        if (this._navigationMenu)
+        if (this._navigationMenu) {
             this._navigationMenu.dispose();
+        }
     }
 
     // private
     _initialize() {
-        // Get configuration
-        let config = new ExtensionConfig(vscode.workspace.getConfiguration());
-
         // Create navigation menu
         this._navigationMenu = new NavigationQuickPickMenu(
-            config.excludePatterns, this._onFileChosen.bind(this), this._onDirChosen.bind(this)
+            this._config.excludePatterns, this._onFileChosen.bind(this), this._onDirChosen.bind(this)
         );
 
         // Call active editor changed manually first time
@@ -317,6 +322,14 @@ class StatusBarBreadCrumbExtension extends Disposable {
     }
 
     _commandShowThisFileLevelNavigation(dir) {
+        if (dir == undefined || dir === undefined) {
+            let currentUri = vscode.window.activeTextEditor.document.uri;
+            if (!this._validateFileUri(currentUri)) {
+                return;
+            }
+            dir = path.dirname(path.normalize(currentUri.fsPath));
+        }
+
         log.info('Showing quick open menu for ' + dir);
 
         // show directory in menu
@@ -342,9 +355,9 @@ class StatusBarBreadCrumbExtension extends Disposable {
     }
 
     _onDirChosen(dirPath) {
-        log.info(`dir chosen ${dirPath}`)
+        log.info(`dir chosen ${dirPath}`);
 
-        this._lastDirShown = dirPath
+        this._lastDirShown = dirPath;
     }
 
     _onNewTextEditor(textEditor) {
@@ -355,6 +368,9 @@ class StatusBarBreadCrumbExtension extends Disposable {
         }
 
         let document = textEditor.document;
+        if (!this._validateFileUri(document.uri)) {
+            return;
+        }
 
         // log event
         log.info('new document opened ' + document.fileName);
@@ -362,17 +378,36 @@ class StatusBarBreadCrumbExtension extends Disposable {
         // set current statusbar item text and show it
         this._statusBarItem.setItems(
             createBreadCrumbItemsFromFile(
-                document.uri, this._commandShowThisFileLevelNavigation.bind(this)
+                document.uri, (dir) => {
+                    if (_isDirectory(dir)) {
+                        this._onDirChosen(dir);
+                        this._commandShowThisFileLevelNavigation(dir);
+                    }
+                    // else do nothing since only current file not a folder
+                }
             )
         );
         this._statusBarItem.show();
     }
+
+    _validateFileUri(uri) {
+        if (uri.scheme !== 'file') {
+            vscode.window.showWarningMessage(
+                `Sorry, but remote files (current file scheme ${uri.scheme}) are not supported`
+            );
+            return false;
+        }
+        return true;
+    }
 }
 
 // Aggregated list of needful commands
-StatusBarBreadCrumbExtension.COMMAND_SHOW_THIS_FILE_LEVEL_NAVIGATION = 'statusBarBreadcrumb.showThisFileLevelNavigation';
-StatusBarBreadCrumbExtension.COMMAND_SHOW_LAST_DIR_LEVEL_NAVIGATION = 'statusBarBreadcrumb.showLastDirLevelNavigation';
-StatusBarBreadCrumbExtension.COMMAND_SHOW_THIS_FILE_LEVEL_NAVIGATION_COMPAT = 'statusBarBreadcrumb.showSameLevelFilesForGiven';
+StatusBarBreadCrumbExtension.COMMAND_SHOW_THIS_FILE_LEVEL_NAVIGATION = '' +
+    'statusBarBreadcrumb.showThisFileLevelNavigation';
+StatusBarBreadCrumbExtension.COMMAND_SHOW_LAST_DIR_LEVEL_NAVIGATION =  '' +
+    'statusBarBreadcrumb.showLastDirLevelNavigation';
+StatusBarBreadCrumbExtension.COMMAND_SHOW_THIS_FILE_LEVEL_NAVIGATION_COMPAT = '' +
+    'statusBarBreadcrumb.showSameLevelFilesForGiven';
 StatusBarBreadCrumbExtension.COMMANDS_AGGREGATED = [
     [
         StatusBarBreadCrumbExtension.COMMAND_SHOW_THIS_FILE_LEVEL_NAVIGATION,
@@ -389,7 +424,6 @@ StatusBarBreadCrumbExtension.COMMANDS_AGGREGATED = [
     ],
 ];
 
-
 // extension activate method
 export function activate(context) {
     log.info('extension ' + context.workspaceState._id + ' has been initialized');
@@ -399,9 +433,4 @@ export function activate(context) {
     this_extension.activate(context);
     // Sub for dispose so extension will be disposed automatically and we don't need manage object life-cycle manually
     context.subscriptions.push(this_extension);
-}
-
-// deactivate method
-export function deactivate() {
-    
 }

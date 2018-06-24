@@ -11,7 +11,6 @@ var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = [
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
 exports.activate = activate;
-exports.deactivate = deactivate;
 
 var _path = require("path");
 
@@ -24,10 +23,6 @@ var os = _interopRequireWildcard(_os);
 var _fs = require("fs");
 
 var fs = _interopRequireWildcard(_fs);
-
-var _minimatch = require("minimatch");
-
-var minimatch = _interopRequireWildcard(_minimatch);
 
 var _vscode = require("vscode");
 
@@ -43,6 +38,7 @@ function _possibleConstructorReturn(self, call) { if (!self) { throw new Referen
 
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
+//
 var log = console;
 
 // utils
@@ -150,9 +146,11 @@ var NavigationQuickPickMenu = function (_Disposable) {
         _this._dirCallback = dirSelectedCallback;
         _this._excludePatterns = excludePatterns;
         _this._currentCancellationToken = null;
-        if (dirSelectedCallback == undefined || dirSelectedCallback === null) _this._dirCallback = function (abs, name) {
-            return _this.showDir(abs);
-        };else {
+        if (dirSelectedCallback === undefined || dirSelectedCallback === null) {
+            _this._dirCallback = function (abs, name) {
+                return _this.showDir(abs);
+            };
+        } else {
             _this._dirCallback = function (self, oldDirCallback) {
                 return function (abs, name) {
                     self.showDir(abs);
@@ -185,15 +183,28 @@ var NavigationQuickPickMenu = function (_Disposable) {
                 });
             }).forEach(function (absolute) {
                 var name = path.basename(absolute);
-                if (_isDirectory(absolute)) dirs.push({ label: "$(file-directory) " + name, detail: absolute });else files.push({ label: name, detail: absolute });
+                if (_isDirectory(absolute)) {
+                    dirs.push({ label: "$(file-directory) " + name, detail: absolute });
+                } else {
+                    files.push({ label: name, detail: absolute });
+                }
             });
             // show menu items, on then call appropriate callback
             this._currentCancellationToken = new vscode.CancellationTokenSource();
-            vscode.window.showQuickPick([{ label: '..', detail: path.join(dir, '..') }].concat(dirs.sort().concat(files.sort()))).then(function (selected) {
+            vscode.window.showQuickPick([{ label: '.', detail: dir }, { label: '..', detail: path.join(dir, '..') }].concat(dirs.sort().concat(files.sort()))).then(function (selected) {
                 _this2._currentCancellationToken = null;
-                if (selected == undefined) return;
+                if (selected === undefined) {
+                    return;
+                }
+                if (selected.label === '.') {
+                    return;
+                }
 
-                if (_isDirectory(selected.detail)) _this2._dirCallback(selected.detail, selected.name);else _this2._fileCallback(selected.detail, selected.name);
+                if (_isDirectory(selected.detail)) {
+                    _this2._dirCallback(selected.detail, selected.name);
+                } else {
+                    _this2._fileCallback(selected.detail, selected.name);
+                }
             });
         }
     }, {
@@ -432,6 +443,7 @@ var StatusBarBreadCrumbExtension = function (_Disposable3) {
         _this5._navigationMenu = null;
         _this5._config = null;
         _this5._lastDirShown = null;
+        _this5._config = null;
         return _this5;
     }
 
@@ -458,7 +470,7 @@ var StatusBarBreadCrumbExtension = function (_Disposable3) {
                     vscode.commands.registerCommand(command_name, command_func.bind(this));
                 }
 
-                // reload on config change
+                // Get configuration
             } catch (err) {
                 _didIteratorError7 = true;
                 _iteratorError7 = err;
@@ -474,7 +486,10 @@ var StatusBarBreadCrumbExtension = function (_Disposable3) {
                 }
             }
 
-            vscode.workspace.onDidChangeConfiguration(this.reload.bind(this));
+            this._config = new _config.ExtensionConfig();
+
+            // Reload on config change
+            this._config.onExcludePatternsChanged(this.reload.bind(this));
 
             // Subscribe for current document changed events
             vscode.window.onDidChangeActiveTextEditor(this._onNewTextEditor.bind(this));
@@ -506,7 +521,9 @@ var StatusBarBreadCrumbExtension = function (_Disposable3) {
         key: "dispose",
         value: function dispose() {
             this._statusBarItem.dispose();
-            if (this._navigationMenu) this._navigationMenu.dispose();
+            if (this._navigationMenu) {
+                this._navigationMenu.dispose();
+            }
         }
 
         // private
@@ -514,11 +531,8 @@ var StatusBarBreadCrumbExtension = function (_Disposable3) {
     }, {
         key: "_initialize",
         value: function _initialize() {
-            // Get configuration
-            var config = new _config.ExtensionConfig(vscode.workspace.getConfiguration());
-
             // Create navigation menu
-            this._navigationMenu = new NavigationQuickPickMenu(config.excludePatterns, this._onFileChosen.bind(this), this._onDirChosen.bind(this));
+            this._navigationMenu = new NavigationQuickPickMenu(this._config.excludePatterns, this._onFileChosen.bind(this), this._onDirChosen.bind(this));
 
             // Call active editor changed manually first time
             this._onNewTextEditor(vscode.window.activeTextEditor);
@@ -526,6 +540,14 @@ var StatusBarBreadCrumbExtension = function (_Disposable3) {
     }, {
         key: "_commandShowThisFileLevelNavigation",
         value: function _commandShowThisFileLevelNavigation(dir) {
+            if (dir == undefined || dir === undefined) {
+                var currentUri = vscode.window.activeTextEditor.document.uri;
+                if (!this._validateFileUri(currentUri)) {
+                    return;
+                }
+                dir = path.dirname(path.normalize(currentUri.fsPath));
+            }
+
             log.info('Showing quick open menu for ' + dir);
 
             // show directory in menu
@@ -561,6 +583,8 @@ var StatusBarBreadCrumbExtension = function (_Disposable3) {
     }, {
         key: "_onNewTextEditor",
         value: function _onNewTextEditor(textEditor) {
+            var _this6 = this;
+
             // skip if there is no active editor or no document or it's untitled
             if (!textEditor || !textEditor.document || textEditor.document.isUntitled) {
                 this._statusBarItem.setItems([]);
@@ -568,13 +592,31 @@ var StatusBarBreadCrumbExtension = function (_Disposable3) {
             }
 
             var document = textEditor.document;
+            if (!this._validateFileUri(document.uri)) {
+                return;
+            }
 
             // log event
             log.info('new document opened ' + document.fileName);
 
             // set current statusbar item text and show it
-            this._statusBarItem.setItems(createBreadCrumbItemsFromFile(document.uri, this._commandShowThisFileLevelNavigation.bind(this)));
+            this._statusBarItem.setItems(createBreadCrumbItemsFromFile(document.uri, function (dir) {
+                if (_isDirectory(dir)) {
+                    _this6._onDirChosen(dir);
+                    _this6._commandShowThisFileLevelNavigation(dir);
+                }
+                // else do nothing since only current file not a folder
+            }));
             this._statusBarItem.show();
+        }
+    }, {
+        key: "_validateFileUri",
+        value: function _validateFileUri(uri) {
+            if (uri.scheme !== 'file') {
+                vscode.window.showWarningMessage("Sorry, but remote files (current file scheme " + uri.scheme + ") are not supported");
+                return false;
+            }
+            return true;
         }
     }]);
 
@@ -584,9 +626,9 @@ var StatusBarBreadCrumbExtension = function (_Disposable3) {
 // Aggregated list of needful commands
 
 
-StatusBarBreadCrumbExtension.COMMAND_SHOW_THIS_FILE_LEVEL_NAVIGATION = 'statusBarBreadcrumb.showThisFileLevelNavigation';
-StatusBarBreadCrumbExtension.COMMAND_SHOW_LAST_DIR_LEVEL_NAVIGATION = 'statusBarBreadcrumb.showLastDirLevelNavigation';
-StatusBarBreadCrumbExtension.COMMAND_SHOW_THIS_FILE_LEVEL_NAVIGATION_COMPAT = 'statusBarBreadcrumb.showSameLevelFilesForGiven';
+StatusBarBreadCrumbExtension.COMMAND_SHOW_THIS_FILE_LEVEL_NAVIGATION = '' + 'statusBarBreadcrumb.showThisFileLevelNavigation';
+StatusBarBreadCrumbExtension.COMMAND_SHOW_LAST_DIR_LEVEL_NAVIGATION = '' + 'statusBarBreadcrumb.showLastDirLevelNavigation';
+StatusBarBreadCrumbExtension.COMMAND_SHOW_THIS_FILE_LEVEL_NAVIGATION_COMPAT = '' + 'statusBarBreadcrumb.showSameLevelFilesForGiven';
 StatusBarBreadCrumbExtension.COMMANDS_AGGREGATED = [[StatusBarBreadCrumbExtension.COMMAND_SHOW_THIS_FILE_LEVEL_NAVIGATION, StatusBarBreadCrumbExtension.prototype._commandShowThisFileLevelNavigation], [
 // TODO have to be deleted later
 StatusBarBreadCrumbExtension.COMMAND_SHOW_THIS_FILE_LEVEL_NAVIGATION_COMPAT, StatusBarBreadCrumbExtension.prototype._commandShowThisFileLevelNavigation], [StatusBarBreadCrumbExtension.COMMAND_SHOW_LAST_DIR_LEVEL_NAVIGATION, StatusBarBreadCrumbExtension.prototype._commandShowLastDirLevelNavigation]];
@@ -601,7 +643,4 @@ function activate(context) {
     // Sub for dispose so extension will be disposed automatically and we don't need manage object life-cycle manually
     context.subscriptions.push(this_extension);
 }
-
-// deactivate method
-function deactivate() {}
 //# sourceMappingURL=extension.js.map
