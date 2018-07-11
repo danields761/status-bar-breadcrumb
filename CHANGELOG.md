@@ -1,5 +1,9 @@
 # Change Log
 
+## [0.2.3]
+
+- Remove annying warning messages which appearing every time user opens editor with file which belongs to non-supported scheme, git change log as example. Now this warning are shown only when user requests to open directory menu for such editors.
+
 ## [0.2.2]
 
 - Improves command `statusBarBreadcrumb.showLastDirLevelNavigation` behavior, now last dir position is also remembered after clicking on breadcrumb dir item

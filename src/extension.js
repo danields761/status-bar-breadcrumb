@@ -324,7 +324,7 @@ class StatusBarBreadCrumbExtension extends Disposable {
     _commandShowThisFileLevelNavigation(dir) {
         if (dir == undefined || dir === undefined) {
             let currentUri = vscode.window.activeTextEditor.document.uri;
-            if (!this._validateFileUri(currentUri)) {
+            if (!this._validateFileUri(currentUri, true)) {
                 return;
             }
             dir = path.dirname(path.normalize(currentUri.fsPath));
@@ -390,8 +390,8 @@ class StatusBarBreadCrumbExtension extends Disposable {
         this._statusBarItem.show();
     }
 
-    _validateFileUri(uri) {
-        if (uri.scheme !== 'file') {
+    _validateFileUri(uri, validate) {
+        if (uri.scheme !== 'file' && validate) {
             vscode.window.showWarningMessage(
                 `Sorry, but remote files (current file scheme ${uri.scheme}) are not supported`
             );

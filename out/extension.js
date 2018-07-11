@@ -191,7 +191,7 @@ var NavigationQuickPickMenu = function (_Disposable) {
             });
             // show menu items, on then call appropriate callback
             this._currentCancellationToken = new vscode.CancellationTokenSource();
-            vscode.window.showQuickPick([{ label: '.', detail: dir }, { label: '..', detail: path.join(dir, '..') }].concat(dirs.sort().concat(files.sort()))).then(function (selected) {
+            vscode.window.showQuickPick([{ label: '..', detail: path.join(dir, '..') }, { label: '.', detail: dir }].concat(dirs.sort().concat(files.sort()))).then(function (selected) {
                 _this2._currentCancellationToken = null;
                 if (selected === undefined) {
                     return;
@@ -257,35 +257,39 @@ var MultipleStatusBarItems = function (_Disposable2) {
             this.dispose();
 
             var num = 0;
+
+            var _loop = function _loop(text, hint, callable, args) {
+                var r_item = vscode.window.createStatusBarItem(_this4._sbAlign, _this4._basePriority + num++);
+
+                var command = 'extension._internalCommand' + num;
+                var command_handle = vscode.commands.registerCommand(command, function () {
+                    return callable(args);
+                });
+
+                r_item.text = text;
+                r_item.command = command;
+                r_item.tooltip = hint;
+
+                _this4._subItems.push(r_item);
+                _this4._subItemCommandHandles.push(command_handle);
+            };
+
             var _iteratorNormalCompletion2 = true;
             var _didIteratorError2 = false;
             var _iteratorError2 = undefined;
 
             try {
-                var _loop = function _loop() {
-                    var _step2$value = _slicedToArray(_step2.value, 4),
-                        text = _step2$value[0],
-                        hint = _step2$value[1],
-                        callable = _step2$value[2],
-                        args = _step2$value[3];
-
-                    var r_item = vscode.window.createStatusBarItem(_this4._sbAlign, _this4._basePriority + num++);
-
-                    var command = 'extension._internalCommand' + num;
-                    var command_handle = vscode.commands.registerCommand(command, function () {
-                        return callable(args);
-                    });
-
-                    r_item.text = text;
-                    r_item.command = command;
-                    r_item.tooltip = hint;
-
-                    _this4._subItems.push(r_item);
-                    _this4._subItemCommandHandles.push(command_handle);
-                };
-
                 for (var _iterator2 = items[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
-                    _loop();
+                    var _ref = _step2.value;
+
+                    var _ref2 = _slicedToArray(_ref, 4);
+
+                    var text = _ref2[0];
+                    var hint = _ref2[1];
+                    var callable = _ref2[2];
+                    var args = _ref2[3];
+
+                    _loop(text, hint, callable, args);
                 }
             } catch (err) {
                 _didIteratorError2 = true;
@@ -463,9 +467,12 @@ var StatusBarBreadCrumbExtension = function (_Disposable3) {
 
             try {
                 for (var _iterator7 = StatusBarBreadCrumbExtension.COMMANDS_AGGREGATED[Symbol.iterator](), _step7; !(_iteratorNormalCompletion7 = (_step7 = _iterator7.next()).done); _iteratorNormalCompletion7 = true) {
-                    var _step7$value = _slicedToArray(_step7.value, 2),
-                        command_name = _step7$value[0],
-                        command_func = _step7$value[1];
+                    var _ref3 = _step7.value;
+
+                    var _ref4 = _slicedToArray(_ref3, 2);
+
+                    var command_name = _ref4[0];
+                    var command_func = _ref4[1];
 
                     vscode.commands.registerCommand(command_name, command_func.bind(this));
                 }
@@ -542,7 +549,7 @@ var StatusBarBreadCrumbExtension = function (_Disposable3) {
         value: function _commandShowThisFileLevelNavigation(dir) {
             if (dir == undefined || dir === undefined) {
                 var currentUri = vscode.window.activeTextEditor.document.uri;
-                if (!this._validateFileUri(currentUri)) {
+                if (!this._validateFileUri(currentUri, true)) {
                     return;
                 }
                 dir = path.dirname(path.normalize(currentUri.fsPath));
@@ -611,8 +618,8 @@ var StatusBarBreadCrumbExtension = function (_Disposable3) {
         }
     }, {
         key: "_validateFileUri",
-        value: function _validateFileUri(uri) {
-            if (uri.scheme !== 'file') {
+        value: function _validateFileUri(uri, validate) {
+            if (uri.scheme !== 'file' && validate) {
                 vscode.window.showWarningMessage("Sorry, but remote files (current file scheme " + uri.scheme + ") are not supported");
                 return false;
             }
