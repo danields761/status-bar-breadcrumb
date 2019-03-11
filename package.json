@@ -1,8 +1,8 @@
 {
     "name": "status-bar-breadcrumb",
-    "displayName": "BreadCrumb in StatusBar",
+    "displayName": "BreadCrumb in StatusBar [DEPRECATED]",
     "description": "Temporary solution which helps to watch current active tab and easily navigate through relative paths and files",
-    "version": "0.2.3",
+    "version": "0.3.1",
     "publisher": "danields761",
     "author": "Daniel Daniel's <danields761@gmail.com> (https://github.com/danields761)",
     "contributors": [

@@ -1,5 +1,11 @@
 # Status Bar Breadcrumb README
 
+> **ATTENTION** now this extension is deprecated thus will not be maintained anymore, use it on your own risk
+
+> **Why?** If you are really interested why: since July 2018 VSCode released official support for breadcrumbs with more features like language extension integration, code navigation etc so this become useless.
+
+> **But** thanks for all those, who found this extension helpful. Thank you very much!
+
 ![version](https://vsmarketplacebadge.apphb.com/version-short/danields761.status-bar-breadcrumb.svg)
 ![installs](https://vsmarketplacebadge.apphb.com/installs-short/danields761.status-bar-breadcrumb.svg)
 
